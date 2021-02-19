@@ -53,6 +53,6 @@ obj <- MORST_NULL_Model(Y, Z)
 
 X = as.matrix(gi.mat)
 
-morst_res = MORST(G=X, obj=obj, weights= rep(1/ngene,ngene), siglevel = 0.05)
+morst_res = MORST(G=X, obj=obj, weights= rep(1/sqrt(ngene),ngene), siglevel = 0.05)
 
 print(paste("MORST P-Value:",morst_res))
