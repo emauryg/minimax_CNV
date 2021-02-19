@@ -15,3 +15,6 @@ The data is in the `data/` folder:
 * `mycnv2_gi.txt` contains the gene overlaps matrix.
 * `mycnv2_ln.txt` contains the event length matrix. 
 * `mycnv2_yy.txt` contains the phenotypes (binary 0,1). 
+
+
+Using MORST on the same data set with the code in `MORST_CNV.R` we get a `p = 2.634e-09, at a 0.05 alpha level`. 
