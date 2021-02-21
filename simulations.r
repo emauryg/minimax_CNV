@@ -93,14 +93,14 @@ typeI_test <- function(gi.mat, n.cnv, lavg.ln.overallmean,siglevel, no_ccret=FAL
     return(list(p_ccret = p_CCRET, p_morst = p_MORST))
 }
 
-typeI_df = matrix(0, nc=2, nr=4)
-sigs = c(0.05, 1e-2,1e-3, 1e-4)
+typeI_df = matrix(0, nc=2, nr=3)
+sigs = c(0.05, 1e-2,1e-3)
+nsims = 1e4
 p_ccrets = rep(NA, nsims)
 for(i in 1:nrow(typeI_df)){
     cat("========================\n")
     cat("Test size:",sigs[i],"\n")
     cat("=======================\n")
-    nsims = 1e5
     p_tmp = matrix(NA, nc=2, nr=nsims)
     sig_level = sigs[i]
     if(sig_level != 0.05) {no_ccret = TRUE} else{no_ccret=FALSE}
@@ -119,6 +119,21 @@ for(i in 1:nrow(typeI_df)){
     typeI_df[i,] = c(sum(p_tmp[,1] < sig_level)/nsims, sum(p_tmp[,2] < sig_level/nsims))
 }
 
+print(typeI_df)
+
+save(typeI_df, file="typeI_df.rds")
+
+## Measure Power:
+ngene       = ncol(gi.mat)
+nsubj       = nrow(gi.mat)
+idx = sample.int(nsubj, nsubj, replace=TRUE)
+X_sample = gi.mat[idx,]
+ncnv_sample = n.cnv[idx]; size_sample = lavg.ln.overallmean[idx]
+Z = cbind(ncnv_sample, size_sample)
+Z_adj = (Z - mean(Z))/sd(Z)
+beta_cnv = beta_size = log(1.5)
+case_prob = expit(-2.5 + beta_cnv*Z_adj[,1] + beta_size*Z_adj[,1])
+Y = rbinom(nsubj,1, case_prob)
 
 # library(foreach)
 # library(parallel)
