@@ -119,13 +119,13 @@ vctest.btqt.Gmain.fun<-function(y=yy, geno=Geno, x.adj=xx, trait.type="gaussian"
       
       ## pval.3M = 1-pchisq( (T.G-c1)*sqrt(hprime/c2)+hprime, dof)
 
-      pval.T.G.liu    = liu(   T.G, ev, rep(1, length(ev)), rep(0, length(ev)))
+      #pval.T.G.liu    = liu(   T.G, ev, rep(1, length(ev)), rep(0, length(ev)))
       pval.T.G.davies = davies(T.G, ev, rep(1, length(ev)), rep(0, length(ev)))$Qq
       ##-----------------
       return(c(
                ##          "T.G" = T.G,   
                ##"pmat.data"= pmat.data,
-               "pval.T.G.davies" = pval.T.G.davies, "pval.T.G.liu" = pval.T.G.liu
+               "pval.T.G.davies" = pval.T.G.davies #, "pval.T.G.liu" = pval.T.G.liu
                ))
       ## return("pval.T.G.davies" = pval.T.G.davies)
     }

@@ -3,6 +3,8 @@
 
 ## Written by Eduardo Maury (eduardo_maury AT hms DOT harvard DOT edu)
 
+setwd("C:/Users/emaur/Dropbox (MIT)/PhD Classes/STAT364 Scalable Statistical Inference for Big Data and Applications/presentation_Lin/minimax_CNV")
+
 library("MASS")
 library("CompQuadForm")
 library("matrixStats")
@@ -13,6 +15,8 @@ sourceCpp("Saddle.cpp")
 source("Association_tests.R")
 source("CCRET/corefun.r")
 source('CCRET/fun.plink2ccret.r')
+
+
 
 ## Preprocessing as recommended in the CCRET package
 ##------------------------------------
@@ -65,7 +69,7 @@ expit <- function(x){
     return(exp(x)/(1+exp(x)))
 }
 
-typeI_test <- function(gi.mat, n.cnv, lavg.ln.overallmean,siglevel){
+typeI_test <- function(gi.mat, n.cnv, lavg.ln.overallmean,siglevel, no_ccret=FALSE){
     ngene       = ncol(gi.mat)
     nsubj       = nrow(gi.mat)
     idx = sample.int(nsubj, nsubj, replace=TRUE)
@@ -78,33 +82,57 @@ typeI_test <- function(gi.mat, n.cnv, lavg.ln.overallmean,siglevel){
     Y = rbinom(nsubj,1, case_prob)
 
     ### Run CCRET
-    GC1mat = getK.gi.mat.fun(X_sample, kernel=1, WT=rep(1/ngene, ngene))
-    p_CCRET = vctest.btqt.Gmain.fun(y=Y, geno=X_sample, x.adj=Z, trait.type="binomial", SSS=GC1mat)[1]
-
+    p_CCRET = NULL
+    if(!(no_ccret)){
+        GC1mat = getK.gi.mat.fun(X_sample, kernel=1, WT=rep(1/ngene, ngene))
+        p_CCRET = vctest.btqt.Gmain.fun(y=Y, geno=X_sample, x.adj=Z, trait.type="binomial", SSS=GC1mat)[1]
+    }
     ### Run MORST
     obj = MORST_NULL_Model(Y, Z)
-    p_MORST = MORST(G=as.matrix(X_sample), obj=obj, weights= rep(1/sqrt(ngene),ngene), siglevel = siglevel)
+    p_MORST = MORST(G=Matrix(as.matrix(X_sample),sparse=TRUE), obj=obj, weights= rep(1/sqrt(ngene),ngene), siglevel = siglevel)
     return(list(p_ccret = p_CCRET, p_morst = p_MORST))
 }
 
 typeI_df = matrix(0, nc=2, nr=4)
 sigs = c(0.05, 1e-2,1e-3, 1e-4)
+p_ccrets = rep(NA, nsims)
 for(i in 1:nrow(typeI_df)){
     cat("========================\n")
     cat("Test size:",sigs[i],"\n")
     cat("=======================\n")
-    nsims = 10000
+    nsims = 1e5
     p_tmp = matrix(NA, nc=2, nr=nsims)
     sig_level = sigs[i]
+    if(sig_level != 0.05) {no_ccret = TRUE} else{no_ccret=FALSE}
     for(sim in 1:nsims){
         if(sim == 1 || sim %% 100 == 0){
             cat("Simulation:",sim,"\n")
         }
-        pvals = typeI_test(gi.mat, n.cnv, lavg.ln.overallmean,sig_level)
-        p_tmp[sim,1] = pvals$p_ccret
+        pvals = typeI_test(gi.mat, n.cnv, lavg.ln.overallmean,sig_level, no_ccret=no_ccret)
+        if(no_ccret == FALSE) {
+            p_tmp[sim,1] = pvals$p_ccret
+            p_ccrets[sim] = pvals$p_ccret
+        } 
         p_tmp[sim,2] = pvals$p_morst
     }
+    p_tmp[,1] = p_ccrets
     typeI_df[i,] = c(sum(p_tmp[,1] < sig_level)/nsims, sum(p_tmp[,2] < sig_level/nsims))
 }
 
 
+# library(foreach)
+# library(parallel)
+# library(doParallel)
+# # Sys.setenv(TAR = "/bin/tar")
+# #devtools::install_github("r-pkg-examples/rcpp-and-doparallel")
+# library("Rcpp2doParallel")
+# cl <- makeCluster(detectCores()-1, type="FORK")
+# registerDoParallel(cl)
+# res <- foreach(x=1:nsims, .combine="rbind", .packages=c("Rcpp","Rcpp")) %dopar% 
+#     {print(x)
+#     sourceCpp("Saddle.cpp")
+#     source("Association_tests.R")
+#     tmp=typeI_test(gi.mat, n.cnv, lavg.ln.overallmean,sig_level)
+#     c(tmp$p_ccret, tmp$p_morst)}
+
+# stopImplicitCluster()
