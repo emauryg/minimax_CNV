@@ -11,8 +11,8 @@ Simulated data for gene-set enrichment analyses was run using the `GItest_demo.r
 The CCRET result for this dataset is `CCRET p-value of GI effect adjusting for length and dosage = 0 6.109567e-09`.
 
 The data is in the `data/` folder:
-* `mycnv2_ds.txt` contains the gene dosage matrix (with entries 0,1,2,3; although it's supposed to be 0,1,2).
-* `mycnv2_gi.txt` contains the gene overlaps matrix.
+* `mycnv2_ds.txt` contains the gene dosage matrix (with entries 0,1,2,3,4).
+* `mycnv2_gi.txt` contains the gene overlaps matrix (0,1,2)
 * `mycnv2_ln.txt` contains the event length matrix. 
 * `mycnv2_yy.txt` contains the phenotypes (binary 0,1). 
 
