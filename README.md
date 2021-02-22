@@ -18,3 +18,8 @@ The data is in the `data/` folder:
 
 
 Using MORST on the same data set with the code in `MORST_CNV.R` we get a `p = 2.634e-09, at a 0.05 alpha level`. 
+
+## TODO:
+ * Perform simulations using different amounts of signal sparsity
+ * How does this vary with LD/genotype correlation
+ * Apply region based analyses
