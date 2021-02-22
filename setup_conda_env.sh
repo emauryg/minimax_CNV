@@ -7,4 +7,4 @@ USER_ID=$(whoami)
 . /home/${USER_ID}/anaconda3/etc/profile.d/conda.sh
 conda create -n morst_cnv python=3.6 -y
 conda activate morst_cnv
-conda install -y r-essentials r-base
+conda install -y r-essentials r-base r-compquadform
