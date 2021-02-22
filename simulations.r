@@ -116,25 +116,101 @@ for(i in 1:nrow(typeI_df)){
         p_tmp[sim,2] = pvals$p_morst
     }
     p_tmp[,1] = p_ccrets
-    typeI_df[i,] = c(sum(p_tmp[,1] < sig_level)/nsims, sum(p_tmp[,2] < sig_level/nsims))
+    typeI_df[i,] = c(sum(p_tmp[,1] < sig_level)/nsims, sum(p_tmp[,2] < sig_level)/nsims))
 }
 
 print(typeI_df)
 
 save(typeI_df, file="typeI_df.rds")
 
+#####################################################################
+#######################################################################
 ## Measure Power:
-ngene       = ncol(gi.mat)
-nsubj       = nrow(gi.mat)
-idx = sample.int(nsubj, nsubj, replace=TRUE)
-X_sample = gi.mat[idx,]
-ncnv_sample = n.cnv[idx]; size_sample = lavg.ln.overallmean[idx]
-Z = cbind(ncnv_sample, size_sample)
-Z_adj = (Z - mean(Z))/sd(Z)
-beta_cnv = beta_size = log(1.5)
-case_prob = expit(-2.5 + beta_cnv*Z_adj[,1] + beta_size*Z_adj[,1])
-Y = rbinom(nsubj,1, case_prob)
 
+get_dupdelonly_genes <- function(df){
+    duponly_genes = c()
+    delonly_genes = c()
+    for(i in ncol(df)){
+        if(all(df[,i] == 3 | df[,i] == 0)){
+            duponly_genes = c(duponly_genes,names(df[,i,drop=FALSE]))
+        } else if(all(df[,i] == 2 | df[,i] == 0)){
+            delonly_genes = c(delonly_genes, names(df[,i,drop=FALSE]))
+        }
+    }
+    return(list(duponly_genes=duponly_genes, delonly_genes=delonly_genes))
+}
+
+only_genes = get_dupdelonly_genes(gi.mat)
+
+
+power_test <- function(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,siglevel, no_ccret=FALSE){
+    ngene       = ncol(gi.mat)
+    nsubj       = nrow(gi.mat)
+    num_causative = ceiling(ngene*0.40)
+    idx = sample.int(nsubj, nsubj, replace=TRUE)
+    X_sample = gi.mat[idx,]
+    ncnv_sample = n.cnv[idx]; size_sample = lavg.ln.overallmean[idx]
+    Z = cbind(ncnv_sample, size_sample)
+    Z_adj = (Z - mean(Z))/sd(Z)
+    alpha_cnv = alpha_size = log(1.5)
+    beta_gi = matrix(c(rep(effect_size, num_causative), rep(0, ngene - num_causative)), nc=1)
+    case_prob = expit(-2.5 + alpha_cnv*Z_adj[,1] + alpha_size*Z_adj[,1] + as.matrix(X_sample)%*%beta_gi)
+    Y = rbinom(nsubj,1, case_prob)
+
+    ### Run CCRET
+    p_CCRET = NULL
+    if(!(no_ccret)){
+        GC1mat = getK.gi.mat.fun(X_sample, kernel=1, WT=rep(1/ngene, ngene))
+        p_CCRET = vctest.btqt.Gmain.fun(y=Y, geno=X_sample, x.adj=Z, trait.type="binomial", SSS=GC1mat)[1]
+    }
+    ### Run MORST
+    obj = MORST_NULL_Model(Y, Z)
+    p_MORST = MORST(G=Matrix(as.matrix(X_sample),sparse=TRUE), obj=obj, weights= rep(1/sqrt(ngene),ngene), siglevel = siglevel)
+    return(list(p_ccret = p_CCRET, p_morst = p_MORST))
+}
+
+power_range = seq(0.5,1.5, length.out=5)
+power_df = matrix(0, nc=3, nr=length(power_range))
+sigs = c(0.05, 1e-4)
+nsims = 200
+p_ccrets = rep(NA, nsims)
+
+sig_level = 0.05
+for(i in 1:nrow(power_df)){
+    effect_size = power_range[i]
+    cat("========================\n")
+    cat("Effect size:", effect_size,"\n")
+    cat("=======================\n")
+    p_tmp = matrix(NA, nc=2, nr=nsims)
+    for(sim in 1:nsims){
+        if(sim == 1 || sim %% 100 == 0){
+            cat("Simulation:",sim,"\n")
+        }
+        pvals = power_test(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,sig_level)
+        p_tmp[sim,1] = pvals$p_ccret
+        p_tmp[sim,2] = pvals$p_morst
+    }
+    power_df[i,] = c(sum(p_tmp[,1] < sig_level)/nsims, sum(p_tmp[,2] < sig_level)/nsims, sig_level)        
+}
+
+# ## alpha < 1e-4
+# > power_df
+#      [,1]  [,2]  [,3]
+# [1,] 0.17 0.245 1e-04
+# [2,] 0.52 0.640 1e-04
+# [3,] 0.87 0.940 1e-04
+# [4,] 0.96 1.000 1e-04
+# [5,] 1.00 1.000 1e-04
+
+## plotting power curve
+power_df %>% pivot_longer(cols=c(1,2), names_to="model", values_to="Power") %>% 
+    ggplot(aes(x=beta, y=Power)) + 
+    geom_point(aes(color=model, shape=model), size=2) + 
+    geom_line(aes(color=model), lwd=1) + theme_bw(base_size=12) + 
+    scale_color_manual(values=c("CCRET" = "orange","CNV.MORST" = "dodgerblue3")) + 
+    labs(title = "test-size: 1e-4")
+
+###################################################################################
 # library(foreach)
 # library(parallel)
 # library(doParallel)

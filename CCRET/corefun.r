@@ -125,7 +125,8 @@ vctest.btqt.Gmain.fun<-function(y=yy, geno=Geno, x.adj=xx, trait.type="gaussian"
       return(c(
                ##          "T.G" = T.G,   
                ##"pmat.data"= pmat.data,
-               "pval.T.G.davies" = pval.T.G.davies #, "pval.T.G.liu" = pval.T.G.liu
+               "pval.T.G.davies" = pval.T.G.davies
+               #"pval.T.G.liu" = pval.T.G.liu
                ))
       ## return("pval.T.G.davies" = pval.T.G.davies)
     }
