@@ -146,7 +146,7 @@ only_genes = get_dupdelonly_genes(gi.mat)
 power_test <- function(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,siglevel, no_ccret=FALSE){
     ngene       = ncol(gi.mat)
     nsubj       = nrow(gi.mat)
-    num_causative = ceiling(ngene*0.40)
+    num_causative = ceiling(ngene*0.05)
     idx = sample.int(nsubj, nsubj, replace=TRUE)
     X_sample = gi.mat[idx,]
     ncnv_sample = n.cnv[idx]; size_sample = lavg.ln.overallmean[idx]
@@ -166,34 +166,46 @@ power_test <- function(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,siglevel, 
     ### Run MORST
     obj = MORST_NULL_Model(Y, Z)
     p_MORST = MORST(G=Matrix(as.matrix(X_sample),sparse=TRUE), obj=obj, weights= rep(1/sqrt(ngene),ngene), siglevel = siglevel)
-    return(list(p_ccret = p_CCRET, p_morst = p_MORST))
+    #return(list(p_ccret = p_CCRET[1], p_morst = p_MORST))
+    return(c(as.numeric(p_CCRET),p_MORST))
 }
 
 power_range = seq(0.5,1.5, length.out=5)
 power_df = matrix(0, nc=3, nr=length(power_range))
 sigs = c(0.05, 1e-4)
-nsims = 200
+nsims = 300
 p_ccrets = rep(NA, nsims)
 
-sig_level = 0.05
+library(purrr)
+sig_level = 1e-4
 for(i in 1:nrow(power_df)){
     effect_size = power_range[i]
     cat("========================\n")
     cat("Effect size:", effect_size,"\n")
     cat("=======================\n")
     p_tmp = matrix(NA, nc=2, nr=nsims)
-    for(sim in 1:nsims){
-        if(sim == 1 || sim %% 100 == 0){
-            cat("Simulation:",sim,"\n")
-        }
-        pvals = power_test(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,sig_level)
-        p_tmp[sim,1] = pvals$p_ccret
-        p_tmp[sim,2] = pvals$p_morst
-    }
+    # for(sim in 1:nsims){
+    #     if(sim == 1 || sim %% 100 == 0){
+    #         cat("Simulation:",sim,"\n")
+    #     }
+    #     pvals = power_test(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,sig_level)
+    #     p_tmp[sim,1] = pvals$p_ccret
+    #     p_tmp[sim,2] = pvals$p_morst
+    # }
+    p_tmp = nsims %>% rerun(power_test(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,sig_level)) %>% reduce(rbind)
     power_df[i,] = c(sum(p_tmp[,1] < sig_level)/nsims, sum(p_tmp[,2] < sig_level)/nsims, sig_level)        
 }
 
-# ## alpha < 1e-4
+
+## attempt with mcapply
+library(parallel)
+cl <- makeCluster(detectCores()-1, type="FORK")
+
+
+system.time(10 %>% rerun(power_test(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,sig_level)) %>% reduce(rbind))
+system.time( for (i in 1:10){power_test(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,sig_level)})
+
+# ## alpha < 1e-4, singal 0.4
 # > power_df
 #      [,1]  [,2]  [,3]
 # [1,] 0.17 0.245 1e-04
@@ -201,6 +213,8 @@ for(i in 1:nrow(power_df)){
 # [3,] 0.87 0.940 1e-04
 # [4,] 0.96 1.000 1e-04
 # [5,] 1.00 1.000 1e-04
+
+
 
 ## plotting power curve
 power_df %>% pivot_longer(cols=c(1,2), names_to="model", values_to="Power") %>% 
