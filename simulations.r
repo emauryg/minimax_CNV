@@ -175,7 +175,7 @@ power_df = matrix(0, nc=3, nr=length(power_range))
 sigs = c(0.05, 1e-4)
 nsims = 300
 p_ccrets = rep(NA, nsims)
-
+gi.mat[gi.mat > 0] = 1
 library(purrr)
 sig_level = 1e-4
 for(i in 1:nrow(power_df)){
