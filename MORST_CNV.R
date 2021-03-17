@@ -3,56 +3,68 @@
 
 ## Written by Eduardo Maury (eduardo_maury AT hms DOT harvard DOT edu)
 
-library("MASS")
-library("CompQuadForm")
-library("matrixStats")
-library("Matrix")
-library("Rcpp")
-library("RcppEigen")
-sourceCpp("Saddle.cpp")
-source("Association_tests.R")
+setwd("C:/Users/emaur/Dropbox (MIT)/PhD Classes/STAT364 Scalable Statistical Inference for Big Data and Applications/presentation_Lin/minimax_CNV")
+
+library(tidyverse)
+
+pgc_cnvs <- read_tsv("../PGC_SCZ_callset_cnv_liftOver.bed",col_names=c("chrom","start","end","sample_id","diagnosis","state"))
+
+## Change encoding from G and L to 3 and 1 for dosage. 
+
+pgc_cnvs$score = 0
+pgc_cnvs$score[pgc_cnvs$state=="G"] = 3
+pgc_cnvs$score[pgc_cnvs$state=="L"] = 1
+pgc_cnvs$state[pgc_cnvs$state=="G"] = "gain"
+pgc_cnvs$state[pgc_cnvs$state=="L"] = "loss"
+## Getting regions. 
+
+library(CNVRanger)
 
 
-## Preprocessing as recommended in the CCRET package
-##------------------------------------
-## Read in data (in ccret format)
-##------------------------------------
-tag    = "data/mycnv2" 
-yy     = unlist(read.table(paste(tag, "_yy.txt",sep=''), header=T))
-ds.mat =        read.table(paste(tag, "_ds.txt",sep=''), header=T)
-ln.mat =        read.table(paste(tag, "_ln.txt",sep=''), header=T)
-gi.mat =        read.table(paste(tag, "_gi.txt",sep=''), header=T)
+calls = pgc_cnvs %>% dplyr::select(c(chrom,start, end, sample_id,score))
+colnames(calls)[1:3] = c("chr","start","end")
 
 
-##---------------------------------
-## only keep loci with >0 CNV event 
-##---------------------------------
-actual.freq = colMeans(gi.mat!=0)
-key.keep    = (actual.freq>0)
-gi.mat      = gi.mat[,key.keep]
-ngene       = ncol(gi.mat)
-nsubj       = nrow(gi.mat)
+grl = makeGRangesListFromDataFrame(calls, split.field="sample_id", keep.extra.columns=TRUE)
 
-##-----------------------
-## calculating avg len and CNV count (n.cnv)
-##-----------------------
-n.cnv = rowSums(ds.mat!=2)
-raw.lavg.ln = apply(ln.mat, 1, function(x){mean(x[x>0])}) ## nsubj
-lavg.ln.overallmean = raw.lavg.ln
-lavg.ln.overallmean[is.na(raw.lavg.ln)] =mean(ln.mat[ln.mat>0])
-
-## Create fixed-design matrix
-## Note that it gets collapsed into a n x 2 matrix. 
-Z=cbind(n.cnv,lavg.ln.overallmean)
-
-## Calculate null model 
-Y = yy
-
-obj <- MORST_NULL_Model(Y, Z)
+#grl = sort(grl)
 
 
-X = as.matrix(gi.mat)
+gr = unlist(grl)
 
-morst_res = MORST(G=X, obj=obj, weights= rep(1/sqrt(ngene),ngene), siglevel = 0.05)
+cnvrs = disjoin(gr)
 
-print(paste("MORST P-Value:",morst_res))
+testr = cnvrs[seqnames(cnvrs)=="chr2"]
+cnvr = as.data.frame(testr)
+
+X  = matrix(2, nc=nrow(cnvr),nr=length(grl))
+n = length(grl)
+p = nrow(cnvr)
+for (j in 1:p){
+  for (i in 1:n){
+    df = as.data.frame(grl[[i]])
+    if(cnvr$seqnames[j] %in% df$seqnames){
+      tmp = df[df$seqnames == cnvr$seqnames[j],]
+      for(l in 1:nrow(tmp)){
+        if(tmp$start[l] <= cnvr$start[j] & tmp$end[l] >= cnvr$end[j]){
+          X[i,j] = tmp$type[l]
+        }
+      }
+    }
+  }
+  
+}
+
+ra =  RaggedExperiment(grl[seqnames(grl)=="chr2"])
+X = disjoinAssay(ra, simplifyDisjoin=mean)
+X[is.na(X)] = 2
+X = t(X)
+dim(X)
+#reduce to areas that have at least one event
+xmeans = colMeans(X)
+X = X[,xmeans != 2]
+dim(X)
+
+Y = pgc_cnvs$diagnosis[match(rownames(X),pgc_cnvs$sample_id)]
+Y = ifelse(Y=="SCZ",1,0)
+

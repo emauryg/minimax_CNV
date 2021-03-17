@@ -197,13 +197,13 @@ for(i in 1:nrow(power_df)){
 }
 
 
-## attempt with mcapply
-library(parallel)
-cl <- makeCluster(detectCores()-1, type="FORK")
+# ## attempt with mcapply
+# library(parallel)
+# cl <- makeCluster(detectCores()-1, type="FORK")
 
 
-system.time(10 %>% rerun(power_test(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,sig_level)) %>% reduce(rbind))
-system.time( for (i in 1:10){power_test(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,sig_level)})
+# system.time(10 %>% rerun(power_test(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,sig_level)) %>% reduce(rbind))
+# system.time( for (i in 1:10){power_test(effect_size,gi.mat, n.cnv, lavg.ln.overallmean,sig_level)})
 
 # ## alpha < 1e-4, singal 0.4
 # > power_df
