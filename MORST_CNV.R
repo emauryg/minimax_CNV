@@ -68,3 +68,5 @@ dim(X)
 Y = pgc_cnvs$diagnosis[match(rownames(X),pgc_cnvs$sample_id)]
 Y = ifelse(Y=="SCZ",1,0)
 
+res = summary(glm.fit(X,Y, family=binomial("logit")))
+

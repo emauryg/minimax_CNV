@@ -120,7 +120,8 @@ vctest.btqt.Gmain.fun<-function(y=yy, geno=Geno, x.adj=xx, trait.type="gaussian"
       ## pval.3M = 1-pchisq( (T.G-c1)*sqrt(hprime/c2)+hprime, dof)
 
       #pval.T.G.liu    = liu(   T.G, ev, rep(1, length(ev)), rep(0, length(ev)))
-      pval.T.G.davies = davies(T.G, ev, rep(1, length(ev)), rep(0, length(ev)))$Qq
+      #pval.T.G.davies = davies(T.G, ev, rep(1, length(ev)), rep(0, length(ev)))$Qq
+      pval.T.G.davies = Get_Q_pval(T.G,ev) ## using the Lin's lab optimized Davies function. 
       ##-----------------
       return(c(
                ##          "T.G" = T.G,   
