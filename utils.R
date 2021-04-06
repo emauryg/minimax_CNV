@@ -163,3 +163,8 @@ CCT.pval<-function(Pvals,Weights=NULL){
     }
     return(pval)
 }
+
+
+expit <- function(x){
+    return(exp(x)/(1+exp(x)))
+}

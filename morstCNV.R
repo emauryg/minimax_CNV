@@ -90,9 +90,9 @@ old_morst_cnv <- function(Y,Z,G,kernel="dosage",weights.beta=c(1,25),weights=NUL
     }
 
     # For numerical stability
-    const <- length(S)/sum(diag(Sigma0))
-    S = S/sqrt(const)
-    Sigma0 <- Sigma0*const
+    # const <- length(S)/sum(diag(Sigma0))
+    # S = S/sqrt(const)
+    # Sigma0 <- Sigma0*const
 
     ## TODO: add different rho correlation. 
 
@@ -160,13 +160,13 @@ aMORST_cnv <- function(Y,Z,G,kernel="dosage",weights.beta=c(1,25),weights=NULL,t
 }
 
 
-
-morst_cnv <- function(Y,Z,X,kernel="dosage",weights.beta=c(1,25),weights=NULL,tau="Minimax",power.wanted=0.5,siglevel=1e-04){
+morst_cnv <- function(Y,Z,X,null_model,kernel="dosage",weights.beta=c(1,25),weights=NULL,tau="Minimax",power.wanted=0.5,siglevel=1e-04){
     ## implementation by Eduardo Maury 2021-04-01 (april fools!)
+    ## 
     n = length(Y)
     p = ncol(X)
 
-    obj <- fit_null(Y,Z)
+    obj <- null_model
     out_type = obj[["out_type"]]
     if(out_type=="C"){
         X.med <- obj[["X.med"]]
@@ -196,6 +196,16 @@ morst_cnv <- function(Y,Z,X,kernel="dosage",weights.beta=c(1,25),weights=NULL,ta
     }
 
     Sigma = t(W)%*%t(X)%*%P%*%X%*%W
+
+    ## compute the p-values for a range of rho values for a exchengeable matrix
+    r.corr <- c(0,0.1,0.02,0.3,0.4,0.5)
+    r.corr <- c(r.corr^2, 0.5,1)
+    rho = 0.1
+    E = matrix(rho, nrow=p, ncol=p)
+    diag(E) = 1
+    E <- chol(E)
+    S = E%*%S
+    Sigma = E%*%Sigma%*%E
 
     ### For the reason of numerical stability
     # const <- length(S)/sum(diag(Sigma))
