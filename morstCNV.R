@@ -196,6 +196,11 @@ morst_cnv <- function(Y,Z,X,null_model,kernel="dosage",weights.beta=c(1,25),weig
     }
 
     Sigma = t(W)%*%t(X)%*%P%*%X%*%W
+    
+    ## In progress: 
+    ## Kernel Sigma
+    # S = Y.res
+    # Sigma = tcrossprod(ds.to.dsnew(X))
 
     ## compute the p-values for a range of rho values for a exchengeable matrix
     r.corr <- c(0,0.1,0.02,0.3,0.4,0.5)
