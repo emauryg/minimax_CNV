@@ -29,18 +29,18 @@ power_sim_parallel <- function(i,Xmat,idx_names, num_loci=100, dup_effect=0.5,de
     n = nrow(X_sim)
     p = ncol(X_sim)
     Y = rep(0,n)
-    signal_frac = as.integer(floor(0.1*p))
+    signal_frac = as.integer(floor(0.2*p))
     ## Simulate X,Y,Z
     Z<-cbind(rnorm(n),(rbinom(n,size = 1,prob = 0.5)-0.5))
     loc.signal <- sample.int(p, signal_frac)
-    beta_dup = dup_effect*(rbinom(length(loc.signal),size=1, prob=0.5)-0.5)*2
-    beta_del = del_effect*(rbinom(length(loc.signal),size=1, prob=0.5)-0.5)*2
+    beta_dup = dup_effect*(rbinom(length(loc.signal),size=1, prob=0.5))
+    beta_del = del_effect*(rbinom(length(loc.signal),size=1, prob=0.5))
     case_prob = expit(Z[,1]*0.5 + Z[,2]*0.5 + (X_sim[,loc.signal, drop=FALSE] == 3) %*% beta_dup + 
                       (X_sim[,loc.signal,drop=FALSE]==1) %*% beta_del)
     Y = rbinom(length(case_prob), size=1, prob=case_prob)
     Kmat.ds = tcrossprod(ds.to.dsnew(X_sim))
     null_model = fit_null(Y,Z=Z)
-    res1 = aMORST_cnv(Y,Z=Z, X_sim, null_model,IBS=IBS, kernel="linear.weighted", tau="Minimax.approx", power.wanted=0.5, siglevel=0.05)
+    res1 = aMORST_cnv(Y,Z=Z, X_sim, null_model,IBS=IBS, kernel="linear", tau="Minimax.approx", power.wanted=0.5, siglevel=0.05)
     res2 = vctest.btqt.Gmain.fun(y=Y, geno=X_sim, x.adj =Z, trait.type="binomial", SSS=Kmat.ds)
     #res2 = 0
     pvals = c(res2,res1$aMorst, res1$p_tau, res1$p_gamma)
@@ -58,7 +58,7 @@ do_power <- function(X,nsims, num_loci=100, dup_effectRange, del_effectRange){
     for(i in 1:n_iter){
         message("Iteration:", i)
         tmp = mclapply(1:nsims,power_sim_parallel,Xmat=X, idx_names=cont_names,num_loci = 100,
-                                   dup_effect = 6,del_effect = 6,IBS=FALSE,mc.cores = 4)
+                                   dup_effect = 6,del_effect = 6,IBS=FALSE,mc.cores = 8)
         tmp2 = do.call(rbind, tmp)
         power_table[i,] = colMeans(tmp2 < 0.05)/nsims
     }
