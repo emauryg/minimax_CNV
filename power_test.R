@@ -18,7 +18,7 @@ suppressMessages(library("RcppEigen"))
 
 library(parallel)
 
-power_sim_parallel <- function(i,Xmat,idx_names, num_loci=100, dup_effect=0.5,del_effect=-0.5){
+power_sim_parallel <- function(i,Xmat,idx_names, num_loci=100, dup_effect=0.5,del_effect=-0.5, IBS=FALSE){
     ## Generate random samples
     draw_names <- sample(idx_names, size=2000, replace=FALSE)
     X_sim = Xmat[draw_names,]
@@ -40,7 +40,7 @@ power_sim_parallel <- function(i,Xmat,idx_names, num_loci=100, dup_effect=0.5,de
     Y = rbinom(length(case_prob), size=1, prob=case_prob)
     Kmat.ds = tcrossprod(ds.to.dsnew(X_sim))
     null_model = fit_null(Y,Z=Z)
-    res1 = aMORST_cnv(Y,Z=Z, X_sim, null_model, kernel="linear.weighted", tau="Minimax.approx", power.wanted=0.5, siglevel=0.05)
+    res1 = aMORST_cnv(Y,Z=Z, X_sim, null_model,IBS=IBS, kernel="linear.weighted", tau="Minimax.approx", power.wanted=0.5, siglevel=0.05)
     res2 = vctest.btqt.Gmain.fun(y=Y, geno=X_sim, x.adj =Z, trait.type="binomial", SSS=Kmat.ds)
     #res2 = 0
     pvals = c(res2,res1$aMorst, res1$p_tau, res1$p_gamma)
@@ -58,7 +58,7 @@ do_power <- function(X,nsims, num_loci=100, dup_effectRange, del_effectRange){
     for(i in 1:n_iter){
         message("Iteration:", i)
         tmp = mclapply(1:nsims,power_sim_parallel,Xmat=X, idx_names=cont_names,num_loci = 100,
-                                   dup_effect = 6,del_effect = 6,mc.cores = 4)
+                                   dup_effect = 6,del_effect = 6,IBS=FALSE,mc.cores = 4)
         tmp2 = do.call(rbind, tmp)
         power_table[i,] = colMeans(tmp2 < 0.05)/nsims
     }

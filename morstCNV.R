@@ -138,11 +138,11 @@ old_morst_cnv <- function(Y,Z,G,kernel="dosage",weights.beta=c(1,25),weights=NUL
 }
 
 
-aMORST_cnv <- function(Y,Z,G,kernel="dosage",weights.beta=c(1,25),weights=NULL,tau="Minimax",power.wanted=0.5,siglevel=1e-04){
+aMORST_cnv <- function(Y,Z,X,null_model, IBS= FALSE,kernel="dosage",weights.beta=c(1,25),weights=NULL,tau="Minimax",power.wanted=0.5,siglevel=1e-04){
     ## Function that perform aggregated CNV
 
-    p_tau = morst_cnv(Y,Z,G,kernel=kernel, weights.beta=weights.beta, weights=weights, tau=tau, power.wanted=power.wanted, siglevel=siglevel)
-    p_gamma = morst_cnv(Y,Z,abs(2-G),kernel=kernel, weights.beta=weights.beta, weights=weights, tau=tau, power.wanted=power.wanted, siglevel=siglevel)
+    p_tau = morst_cnv(Y,Z,X,null_model=null_model,kernel=kernel, weights.beta=weights.beta, weights=weights, tau=tau, power.wanted=power.wanted, siglevel=siglevel)
+    p_gamma = morst_cnv(Y,Z,abs(2-X),null_model=null_model,kernel=kernel, weights.beta=weights.beta, weights=weights, tau=tau, power.wanted=power.wanted, siglevel=siglevel)
 
     if(p_tau == 0 && p_gamma == 1){
         ## This scenario can occur when there is lack of accuracy: return tippet's method
@@ -160,8 +160,8 @@ aMORST_cnv <- function(Y,Z,G,kernel="dosage",weights.beta=c(1,25),weights=NULL,t
 }
 
 
-morst_cnv <- function(Y,Z,X,null_model,kernel="dosage",weights.beta=c(1,25),weights=NULL,tau="Minimax",power.wanted=0.5,siglevel=1e-04){
-    ## implementation by Eduardo Maury 2021-04-01 (april fools!)
+morst_cnv <- function(Y,Z,X,null_model,IBS = FALSE,kernel="linear",weights.beta=c(1,25),weights=NULL,tau="Minimax",power.wanted=0.5,siglevel=1e-04){
+    ## implementation by Eduardo Maury 2021-04-09
     ## 
     n = length(Y)
     p = ncol(X)
@@ -188,29 +188,29 @@ morst_cnv <- function(Y,Z,X,null_model,kernel="dosage",weights.beta=c(1,25),weig
     }
 
     ## Compute Sigma
-    
-    S = t(W)%*%t(X)%*%Y.res # score statistic
-    H = diag(sigma2.Y) # variance function under the null. mu(1-mu) for binary response
-    if(is.null(Z.tilde)){ P = diag(p)} else{
-        P = H - H%*%Z.tilde%*%solve(t(Z.tilde)%*%H%*%Z.tilde)%*%t(Z.tilde)%*%H # residual generating matrix 
+    if (IBS){ ## Check if we should use the Tzeng et al identitity by state kernel. 
+        S = Y.res
+        Sigma = tcrossprod(ds.to.dsnew(X))
+    } else{
+        S = t(W)%*%t(X)%*%Y.res # score statistic
+        H = diag(sigma2.Y) # variance function under the null. mu(1-mu) for binary response
+        if(is.null(Z.tilde)){ P = diag(p)} else{
+            P = H - H%*%Z.tilde%*%solve(t(Z.tilde)%*%H%*%Z.tilde)%*%t(Z.tilde)%*%H # residual generating matrix 
+        }
+        Sigma = t(W)%*%t(X)%*%P%*%X%*%W
     }
 
-    Sigma = t(W)%*%t(X)%*%P%*%X%*%W
-    
-    ## In progress: 
-    ## Kernel Sigma
-    # S = Y.res
-    # Sigma = tcrossprod(ds.to.dsnew(X))
+
 
     ## compute the p-values for a range of rho values for a exchengeable matrix
-    r.corr <- c(0,0.1,0.02,0.3,0.4,0.5)
-    r.corr <- c(r.corr^2, 0.5,1)
-    rho = 0.1
-    E = matrix(rho, nrow=p, ncol=p)
-    diag(E) = 1
-    E <- chol(E)
-    S = E%*%S
-    Sigma = E%*%Sigma%*%E
+    # r.corr <- c(0,0.1,0.02,0.3,0.4,0.5)
+    # r.corr <- c(r.corr^2, 0.5,1)
+    # rho = 0.1
+    # E = matrix(rho, nrow=p, ncol=p)
+    # diag(E) = 1
+    # E <- chol(E)
+    # S = E%*%S
+    # Sigma = E%*%Sigma%*%E
 
     ### For the reason of numerical stability
     # const <- length(S)/sum(diag(Sigma))
@@ -219,7 +219,11 @@ morst_cnv <- function(Y,Z,X,null_model,kernel="dosage",weights.beta=c(1,25),weig
 
     if(tau ==0){
         ## SKAT
-        Q <- sum(S^2)
+        if (IBS){
+            Q <- t(S)%*%Sigma%*%S
+        } else{
+            Q <- sum(S^2)
+        }
         w.umpa <- eigen(Sigma, symmetric = TRUE, only.values = TRUE)[["values"]]
     } else{
         ### get eigen values
